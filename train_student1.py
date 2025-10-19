@@ -121,7 +121,7 @@ def model_structure(model):
           + ' ' * 3 + 'number' + ' ' * 3 + '|')
     print('-' * 100)
     num_para = 0
-    type_size = 1  # 如果是浮点数就是4
+    type_size = 1  
 
     for index, (key, w_variable) in enumerate(model.named_parameters()):
         if len(key) <= 50:
@@ -144,28 +144,6 @@ def model_structure(model):
     print('-' * 100)
 
 
-def model_mac(model):
-    model_path =( os.path.join(save_dir, args.model+ '.pth'))
-    model =eval(args.model.replace('-', '_'))() # 模型结构
-    state_dict = torch.load(model_path, map_location='cpu')
-    model.load_state_dict(state_dict, strict=False)
-    model = model.to('cuda')
-
-    # 计算模型的总参数量
-    total_params = sum(p.numel() for p in model.parameters())
-    print(f"Total parameters: {total_params}")
-
-    # 打印每一层的参数量
-    # for name, param in model.named_parameters():
-    #    print(f"{name}: {param.numel()} parameters")
-
-    # 使用torchprofile计算模型的计算量
-    input_data = torch.randn(2, 3, 256, 256)  # 生成输入数据
-    input_data = input_data.to('cuda')  # 将输入数据移动到GPU上
-    # macs= profile_macs(model,input_data)  # 输入尺寸根据实际情况调整
-    macs, params = profile(model, inputs=(input_data,))
-    print('MACs计算量: % .4fG' % (macs / 1000000000))  # 计算量
-    print('params参数量: % .4fM' % (params / 1000000))  # 参数量：等价与上面的summary输出的Total params值
 
 
 
@@ -178,17 +156,16 @@ if __name__ == '__main__':
     with open(setting_filename, 'r') as f:
         setting = json.load(f)
 
-    t = time.strftime("-%Y%m%d-%H%M%S", time.localtime())  # 时间戳
-    sys.stdout = Logger('student '+args.model + t + '.txt')#把print输出为txt文件
+    t = time.strftime("-%Y%m%d-%H%M%S", time.localtime())  # 
+    sys.stdout = Logger('student '+args.model + t + '.txt')
 
     network_teacher=eval(args.model_teacher.replace('-', '_'))()
     network_teacher=nn.DataParallel(network_teacher).cuda()
 
-    network = eval(args.model.replace('-', '_'))()  # eval作用：接收运行一个字符串表达式，返回表达式的结果值。
-    # dehazeformer_s()#此处没作用，只是为了体现上一行，方便引进这个函数
+    network = eval(args.model.replace('-', '_'))()  #
     network = nn.DataParallel(network).cuda()
 
-    logger.info(model_structure(network))  #输出网络结构
+    logger.info(model_structure(network))  
 
     start_time = time.time()
 
@@ -202,16 +179,16 @@ if __name__ == '__main__':
 
     criterion = []
     criterion.append(nn.L1Loss().cuda())
-    criterion.append(nn.MSELoss().cuda())   #L2损失函数
+    criterion.append(nn.MSELoss().cuda()) 
     criterion.append(nn.SmoothL1Loss().cuda())
     criterion.append(MS_SSIM().cuda())
     criterion.append(loss_network)
 
 
-    scaler = GradScaler()  # 是一个用于自动混合精度训练的 PyTorch 工具，它可以帮助加速模型训练并减少显存使用量。
+    scaler = GradScaler()  
 
     dataset_dir = os.path.join(args.data_dir, args.dataset)  # /data+OTS
-    train_dataset = PairLoader(dataset_dir, 'train', 'train',  # /data+/OTS+/Train   路径不区分大小写
+    train_dataset = PairLoader(dataset_dir, 'train', 'train',  # /data+/OTS+/Tra
                                setting['patch_size'], setting['edge_decay'], setting['only_h_flip'])
     train_loader = DataLoader(train_dataset,
                               batch_size=setting['batch_size'],
@@ -229,17 +206,16 @@ if __name__ == '__main__':
     save_dir = os.path.join(args.save_dir, args.exp)  # /saved_models+ /outdoor
     os.makedirs(save_dir, exist_ok=True)
 
-    lpips_metric = LearnedPerceptualImagePatchSimilarity(net_type='alex').cuda()  ##LPIPS 图像相似性度量标准
+    lpips_metric = LearnedPerceptualImagePatchSimilarity(net_type='alex').cuda()  #
 
     ckp_network_teacher = torch.load(args.model_teacher_checkpoint_dir)
     try:
-        network_teacher.load_state_dict(ckp_network_teacher['state_dict'])  #torch.load_state_dict()函数就是用于将预训练的参数权重加载到新的模型之中
-
+        network_teacher.load_state_dict(ckp_network_teacher['state_dict'])  #t
         print(f'The teacher model that has successfully loaded the parameters into the student model is : {args.model_teacher}')
     except:
         print('No weight loaded')
 
-    for name, param in network_teacher.named_parameters():    #named_parameters()将会打印每一次迭代元素的名字和param。
+    for name, param in network_teacher.named_parameters():    
         param.requires_grad = False
 
     #losses = []
@@ -258,9 +234,9 @@ if __name__ == '__main__':
     use_lr=0
     total_loss=[]
 
-    if args.resume and os.path.exists(os.path.join(save_dir, args.model + '.pth')):  ##resume重新加载参数   saved_models\saved_models\exp   +\TFD
-        ckp = torch.load(os.path.join(save_dir, args.model + '.pth'))  ##加载模型
-        network.load_state_dict(ckp['state_dict'])  ##加载模型参数。即预训练权重
+    if args.resume and os.path.exists(os.path.join(save_dir, args.model + '.pth')):  
+        ckp = torch.load(os.path.join(save_dir, args.model + '.pth'))  #
+        network.load_state_dict(ckp['state_dict'])  
         start_epoch = ckp['best_epoch']
         best_epoch = ckp['best_epoch']
         best_psnr = ckp['best_psnr']
@@ -288,21 +264,16 @@ if __name__ == '__main__':
         raise Exception("ERROR: unsupported optimizer")
 
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=setting['epochs'],
-                                                           eta_min=setting['lr'] * 1e-2)  # 余弦退火调整学习率
+                                                           eta_min=setting['lr'] * 1e-2)  
 
     writer = SummaryWriter(log_dir=os.path.join(args.log_dir, args.exp, args.model))  # logs\outdoor\dehazeformer-s
-    # 将条目直接写入 log_dir 中的事件文件以供 TensorBoard 使用
+
 
     for epoch in tqdm(range(start_epoch + 1, setting['epochs'] + 1)):
 
         loss ,loss_rec,loss_KD1,loss_KD2,loss_KD3,loss_KD4,loss_KD5,loss_KDout,loss_msssim,loss_pec= train(train_loader, network, criterion, optimizer, scaler)
 
-        writer.add_scalars('train_loss', {'loss':loss,'loss_rec':loss_rec,'loss_KD1':loss_KD1,
-                                          'loss_KD2':loss_KD2,'loss_KD3':loss_KD3,'loss_KD4':loss_KD4,'loss_KD5':loss_KD5,
-                                          'loss_KDout':loss_KDout,'loss_msssim':loss_msssim,'loss_pec':loss_pec}, epoch)  # 增加一个数据图，坐标对应为loss和epoch
-        total_lr.append(optimizer.param_groups[0]["lr"])
-        use_lr=optimizer.param_groups[0]["lr"]
-        total_loss.append(loss)
+        
 
         print(
             f'\rEpoch of training now: {epoch} |  | Train loss: {loss:.5f} |  | lr: {optimizer.param_groups[0]["lr"]:.6f} | time_used: {(time.time() - start_time) / 60 :.1f}'
@@ -310,7 +281,7 @@ if __name__ == '__main__':
             f'\nloss_rec:{loss_rec:5f} || loss_KDout:{loss_KDout:5f} || loss_msssim:{loss_msssim:5f}|| loss_pec:{loss_pec:5f}',
             end='', flush=True)
 
-        scheduler.step()  ##scheduler是对优化器的学习率进行调整
+        scheduler.step()  
 
         if epoch % setting['eval_freq'] == 0:
             avg_psnr, avg_ssim,avg_lpips = valid(val_loader, network, lpips_metric)
@@ -330,20 +301,13 @@ if __name__ == '__main__':
                 best_lpips = avg_lpips
                 best_epoch=epoch
 
-                torch.save({'state_dict': network.state_dict(),  # network.state_dict(),为保存的模型参数
+                torch.save({'state_dict': network.state_dict(),  # 
                             'best_epoch': best_epoch,
                             'best_psnr': best_psnr,
                             'best_ssim': best_ssim,
                             'best_lpips':best_lpips,
-                            'psnrs': psnrs,
-                            'ssims': ssims,
-                            'lpips': lpips,
-                            'total_ssim_avg': total_ssim_avg,
-                            'total_psnr_avg': total_psnr_avg,
-                            'use_lr':use_lr,
-                            'total_lr':total_lr,
-                            'total_loss':total_loss,
-                            },#psnrs-total_loss之间的参数，都是保存到训练得到这个最好模型之前的参数，并不是保存所有epoch的参数
+
+                            },#
                            os.path.join(save_dir, args.model + '.pth'))
                 print(
                     f'\n Models saved at best_epoch: {best_epoch} | best_psnr: {best_psnr:.4f} | best_ssim: {best_ssim:.4f}  | best_lpips: {best_lpips:.4f}')
@@ -359,6 +323,7 @@ if __name__ == '__main__':
 
     print(
         f'\nFinished Training Model:{args.model} | best_epoch: {best_epoch} | best_psnr: {best_psnr:.4f} | best_ssim: {best_ssim:.4f} | best_lpips: {best_lpips:.4f} | total_psnr_avg: {total_psnr_avg:.4f} | total_ssim_avg: {total_ssim_avg:.4f} ')
+
 
 
 
