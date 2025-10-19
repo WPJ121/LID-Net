@@ -75,47 +75,7 @@ def train(train_loader, network, criterion, optimizer, scaler):
         target_img = batch['target'].cuda()
 
         with autocast(args.no_autocast):
-            output_stu,stu_layer1_feature, stu_layer2_feature, stu_layer3_feature, stu_layer4_feature, stu_layer5_feature = network(source_img)
-            output_t,t_layer1_feature, t_layer2_feature, t_layer3_feature, t_layer4_feature, t_layer5_feature=network_teacher(source_img)
 
-            loss_rec = criterion[0](output_stu, target_img)
-            loss_KD1=  criterion[0](stu_layer1_feature,t_layer1_feature)
-            loss_KD2 = criterion[0](stu_layer2_feature,t_layer2_feature)
-            loss_KD3 = criterion[0](stu_layer3_feature,t_layer3_feature)
-            loss_KD4 = criterion[0](stu_layer4_feature,t_layer4_feature)
-            loss_KD5 = criterion[0](stu_layer5_feature,t_layer5_feature)
-            loss_KDout= criterion[0](output_stu,output_t)
-
-            loss_ssim =1 - criterion[3](output_stu, target_img)
-            loss_pec = criterion[4](output_stu, target_img)   #VGG16的感知损失
-            # if epoch<5:
-            #     loss = loss_rec+loss_rec+loss_pec+loss_ssim+loss_KD4
-            #     #print(epoch,'now the trained KD layer is :loss_KD4 ')
-            # else:
-            #     loss=loss_rec+loss_pec+loss_ssim+loss_KD3+loss_KDout
-                #print(epoch,'now the trained KD layer is :loss_KD3, loss_KDout')
-            loss = loss_rec + loss_pec + loss_ssim + loss_KD3 + loss_KDout
-
-             #+  loss_KD4 +loss_ssim    #+ loss_KD5 loss_KD +  loss_KD3 +
-
-        losses.update(loss.item())
-        losses_rec.update(loss_rec.item())
-        losses_KD1.update(loss_KD1.item())
-        losses_KD2.update(loss_KD2.item())
-        losses_KD3.update(loss_KD3.item())
-        losses_KD4.update(loss_KD4.item())
-        losses_KD5.update(loss_KD5.item())
-        losses_KDout.update(loss_KDout.item())
-        losses_msssim.update(loss_ssim.item())
-        losses_pec.update(loss_pec.item())
-
-        optimizer.zero_grad()
-        scaler.scale(loss).backward()  # 调用 GradScaler 的 backward() 方法计算梯度并缩放
-        scaler.step(optimizer)
-        scaler.update()
-
-    return (losses.avg, losses_rec.avg, losses_KD1.avg, losses_KD2.avg, losses_KD3.avg,
-            losses_KD4.avg, losses_KD5.avg, losses_KDout.avg, losses_msssim.avg, losses_pec.avg)
 
 
 def valid(val_loader, network,lpips_metric):
@@ -399,5 +359,6 @@ if __name__ == '__main__':
 
     print(
         f'\nFinished Training Model:{args.model} | best_epoch: {best_epoch} | best_psnr: {best_psnr:.4f} | best_ssim: {best_ssim:.4f} | best_lpips: {best_lpips:.4f} | total_psnr_avg: {total_psnr_avg:.4f} | total_ssim_avg: {total_ssim_avg:.4f} ')
+
 
 
